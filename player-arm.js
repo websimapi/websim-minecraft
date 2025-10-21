@@ -103,17 +103,17 @@ export class PlayerArm {
         if (this.heldItemMesh) {
             this.arm.remove(this.heldItemMesh);
             
-            // Properly dispose of the mesh
-            if (this.heldItemMesh.geometry) {
-                this.heldItemMesh.geometry.dispose();
-            }
-            if (this.heldItemMesh.material) {
-                if (Array.isArray(this.heldItemMesh.material)) {
-                    this.heldItemMesh.material.forEach(m => m.dispose());
-                } else {
-                    this.heldItemMesh.material.dispose();
+            // Properly dispose of the mesh and all children
+            this.heldItemMesh.traverse((child) => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(m => m.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
                 }
-            }
+            });
             
             this.heldItemMesh = null;
         }
@@ -147,6 +147,9 @@ export class PlayerArm {
                 model.traverse((child) => {
                     if (child.isMesh) {
                         child.material.flatShading = false;
+                        // Ensure matrices are initialized
+                        child.updateMatrix();
+                        child.updateMatrixWorld(true);
                     }
                 });
 
@@ -158,6 +161,10 @@ export class PlayerArm {
                 // Previous baseline scale used 0.036; reduce about 3x from the current effective size.
                 const baseScale = 0.036;
                 model.scale.set(baseScale * 0.04, baseScale * 0.04, baseScale * 0.04);
+                
+                // Update matrices after setting position/rotation/scale
+                model.updateMatrix();
+                model.updateMatrixWorld(true);
 
                 this.heldItemMesh = model;
                 this.arm.add(this.heldItemMesh);
@@ -204,6 +211,10 @@ export class PlayerArm {
             blockMesh.scale.set(0.45, 0.45, 0.45);
             blockMesh.position.set(this.heldBase.x, this.heldBase.y, this.heldBase.z);
             blockMesh.rotation.set(-Math.PI / 12, Math.PI, Math.PI / 24);
+            
+            // Ensure matrices are initialized
+            blockMesh.updateMatrix();
+            blockMesh.updateMatrixWorld(true);
 
             this.heldItemMesh = blockMesh;
             this.arm.add(this.heldItemMesh);
