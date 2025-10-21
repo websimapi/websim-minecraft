@@ -109,4 +109,3 @@ export class ClickHandler {
         return 'pickup_all';
     }
 }
-

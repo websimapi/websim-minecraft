@@ -13,7 +13,7 @@ export class BlockBreaker {
         this.breakTime = 0.8;
         this.breakOverlayMesh = null;
         this.droppedItems = [];
-        
+
         this.loadBreakTextures();
     }
 
@@ -42,13 +42,13 @@ export class BlockBreaker {
         const isPickaxe = toolType >= 33 && toolType <= 35;
         const isAxe = toolType >= 36 && toolType <= 38;
         const isShovel = toolType >= 39 && toolType <= 41;
-        
+
         // Define tool tiers
         let toolTier = 0;
         if (toolType === 33 || toolType === 36 || toolType === 39) toolTier = 1; // Wood
         else if (toolType === 34 || toolType === 37 || toolType === 40) toolTier = 2; // Stone
         else if (toolType === 35 || toolType === 38 || toolType === 41) toolTier = 3; // Iron
-        
+
         // Stone/ore blocks (need pickaxe)
         if (blockType === 3 || blockType === 21 || blockType === 32 || blockType === 44 || blockType === 45) {
             if (!isPickaxe) return 15.0; // Very slow without pickaxe
@@ -56,7 +56,7 @@ export class BlockBreaker {
             if (toolTier === 2) return 0.75;
             if (toolTier === 3) return 0.5;
         }
-        
+
         // Wood blocks (faster with axe)
         if (blockType === 5 || blockType === 10 || blockType === 18 || blockType === 19 || blockType === 20) {
             if (!isAxe) return 3.0;
@@ -64,7 +64,7 @@ export class BlockBreaker {
             if (toolTier === 2) return 0.75;
             if (toolTier === 3) return 0.5;
         }
-        
+
         // Dirt/gravel/sand (faster with shovel)
         if (blockType === 1 || blockType === 2 || blockType === 24 || blockType === 26) {
             if (!isShovel) return 1.5;
@@ -72,7 +72,7 @@ export class BlockBreaker {
             if (toolTier === 2) return 0.4;
             if (toolTier === 3) return 0.25;
         }
-        
+
         // Default break times
         return 1.0;
     }
@@ -107,7 +107,7 @@ export class BlockBreaker {
                 const selectedSlot = this.inventory.getSelectedBlock();
                 const toolType = selectedSlot && selectedSlot.type !== null ? selectedSlot.type : null;
                 const blockType = this.world.getBlockAt(this.breakingBlock.x, this.breakingBlock.y, this.breakingBlock.z);
-                
+
                 this.breakTime = this.getBreakTime(blockType, toolType);
                 this.breakProgress += delta;
 
@@ -120,11 +120,11 @@ export class BlockBreaker {
                     if (!this.breakOverlayMesh) {
                         this.createBreakOverlay();
                     }
-                    
+
                     // Adjust overlay size for slabs
                     const isSlab = blockType === 11 || blockType === 12 || blockType === 13;
                     const isTopSlab = blockType === 15 || blockType === 16 || blockType === 17;
-                    
+
                     this.breakOverlayMesh.scale.set(1.01, (isSlab || isTopSlab) ? 0.505 : 1.01, 1.01);
                     this.breakOverlayMesh.material.map = this.breakTextures[stageIndex];
                     this.breakOverlayMesh.material.needsUpdate = true;
@@ -139,7 +139,7 @@ export class BlockBreaker {
                 if (this.breakProgress >= this.breakTime) {
                     let blockType = this.world.getBlockAt(this.breakingBlock.x, this.breakingBlock.y, this.breakingBlock.z);
                     if (blockType !== 0 && blockType !== 9) {
-                    
+
                         // Damage tool if it's a tool
                         if (selectedSlot && selectedSlot.durability !== null && selectedSlot.durability !== undefined) {
                             selectedSlot.durability--;
@@ -150,7 +150,7 @@ export class BlockBreaker {
                             }
                             this.inventory.hotbarUI.updateHotbar();
                         }
-                        
+
                         // Determine drop
                         let dropType = blockType;
                         if (blockType === 21) dropType = 3; // Stone -> Cobblestone
@@ -168,7 +168,7 @@ export class BlockBreaker {
                             const droppedItem = new DroppedItem(this.scene, dropType, dropPosition, this.textures);
                             this.droppedItems.push(droppedItem);
                         }
-                        
+
                         this.world.setBlockAt(this.breakingBlock.x, this.breakingBlock.y, this.breakingBlock.z, 0);
                         breakResult.broken = true;
                         breakResult.position = { x: this.breakingBlock.x, y: this.breakingBlock.y, z: this.breakingBlock.z };
@@ -180,7 +180,7 @@ export class BlockBreaker {
                 this.breakProgress = 0;
             }
         }
-        
+
         return breakResult;
     }
 
@@ -207,7 +207,7 @@ export class BlockBreaker {
         for (let i = this.droppedItems.length - 1; i >= 0; i--) {
             const item = this.droppedItems[i];
             const shouldRemove = item.update(delta, playerPosition, this.world);
-            
+
             if (shouldRemove) {
                 // The item is now responsible for adding itself to inventory upon collection
                 // This loop just removes it from the world

@@ -10,7 +10,7 @@ export class PlayerArm {
         this.currentItemType = null;
         this.gltfLoader = new GLTFLoader();
         this.loadedModels = new Map();
-        
+
         // base offsets for held items (used consistently to avoid teleporting)
         this.heldBase = { x: 0.35, y: -0.12, z: -0.15 };
 
@@ -43,22 +43,22 @@ export class PlayerArm {
 
     createMesh() {
         const textureLoader = new THREE.TextureLoader();
-        
+
         const sideTexture = textureLoader.load('User Arm.png');
         sideTexture.magFilter = THREE.NearestFilter;
         sideTexture.minFilter = THREE.NearestFilter;
-        
+
         const frontTexture = textureLoader.load('user arm front.png');
         frontTexture.magFilter = THREE.NearestFilter;
         frontTexture.minFilter = THREE.NearestFilter;
-        
+
         const sideMat = new THREE.MeshLambertMaterial({ map: sideTexture });
         const frontMat = new THREE.MeshLambertMaterial({ map: frontTexture });
 
         const armLength = 0.9;
         const armThickness = 0.25;
         const geometry = new THREE.BoxGeometry(armThickness, armLength, armThickness); 
-        
+
         geometry.translate(0, -armLength / 2, 0);
 
         const materials = [
@@ -98,12 +98,13 @@ export class PlayerArm {
 
     async updateHeldItem(itemType, textures) {
         if (this.currentItemType === itemType) return;
-        
-        // Always remove old item mesh when switching
+
+        // Immediately update the current item type to prevent re-triggering this function
+        this.currentItemType = itemType;
+
+        // Remove the old item mesh from the scene graph
         if (this.heldItemMesh) {
             this.arm.remove(this.heldItemMesh);
-            
-            // Properly dispose of the mesh and all children
             this.heldItemMesh.traverse((child) => {
                 if (child.geometry) child.geometry.dispose();
                 if (child.material) {
@@ -114,14 +115,11 @@ export class PlayerArm {
                     }
                 }
             });
-            
             this.heldItemMesh = null;
         }
 
-        this.currentItemType = itemType;
-
         if (!itemType || itemType === 0) {
-            return;
+            return; // No new item to show
         }
 
         const glbMap = {
@@ -140,48 +138,42 @@ export class PlayerArm {
             47: 'coal item held arm.glb'
         };
 
+        let newMesh = null;
+
         if (glbMap[itemType]) {
             try {
                 const model = await this.loadGLBModel(glbMap[itemType]);
-                
+
                 model.traverse((child) => {
                     if (child.isMesh) {
                         child.material.flatShading = false;
-                        // Ensure matrices are initialized
                         child.updateMatrix();
                         child.updateMatrixWorld(true);
                     }
                 });
 
-                // Better positioning for held GLB models
-                // Normalize orientation so models face outward; make them ~3x smaller than previous baseline,
-                // shift left and up so the arm holds them toward the palm/back, and tilt so the arm grabs the back.
-                model.position.set(0.18, -0.12, -0.12); // more to the left (smaller x) and higher (larger y)
-                model.rotation.set(-Math.PI / 8, Math.PI, Math.PI / 10); // slight backward tilt so arm grips the back
-                // Previous baseline scale used 0.036; reduce about 3x from the current effective size.
+                model.position.set(0.18, -0.12, -0.12);
+                model.rotation.set(-Math.PI / 8, Math.PI, Math.PI / 10);
                 const baseScale = 0.036;
                 model.scale.set(baseScale * 0.04, baseScale * 0.04, baseScale * 0.04);
-                
-                // Update matrices after setting position/rotation/scale
+
                 model.updateMatrix();
                 model.updateMatrixWorld(true);
 
-                this.heldItemMesh = model;
-                this.arm.add(this.heldItemMesh);
+                newMesh = model;
+
             } catch (error) {
                 console.error('Failed to load item model:', error);
             }
         } else {
-            // It's a block - create a small cube
-            // Make held blocks larger, slightly left and a bit higher so they sit in the hand
+            // It's a block
             const blockSize = 0.76;
             const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
-
             let material;
             const texture = textures[itemType];
-            
+
             if (itemType === 1) { // Grass
-                const materials = [
+                material = [
                     new THREE.MeshLambertMaterial({ map: texture.side }),
                     new THREE.MeshLambertMaterial({ map: texture.side }),
                     new THREE.MeshLambertMaterial({ map: texture.top }),
@@ -189,34 +181,36 @@ export class PlayerArm {
                     new THREE.MeshLambertMaterial({ map: texture.side }),
                     new THREE.MeshLambertMaterial({ map: texture.side })
                 ];
-                material = materials;
-            } else if (itemType === 5 || itemType === 7 || itemType === 20) {
-                const materials = [
-                    new THREE.MeshLambertMaterial({ map: texture.side }),
-                    new THREE.MeshLambertMaterial({ map: texture.side }),
-                    new THREE.MeshLambertMaterial({ map: texture.top }),
-                    new THREE.MeshLambertMaterial({ map: texture.top }),
-                    new THREE.MeshLambertMaterial({ map: texture.side }),
-                    new THREE.MeshLambertMaterial({ map: texture.side })
+            } else if (itemType === 5 || itemType === 7 || itemType === 20 || itemType === 44 || itemType === 45) {
+                const baseTextureSet = textures[itemType === 45 ? 44 : itemType];
+                material = [
+                    new THREE.MeshLambertMaterial({ map: baseTextureSet.side }),
+                    new THREE.MeshLambertMaterial({ map: baseTextureSet.side }),
+                    new THREE.MeshLambertMaterial({ map: baseTextureSet.top }),
+                    new THREE.MeshLambertMaterial({ map: (baseTextureSet.bottom || baseTextureSet.top) }),
+                    new THREE.MeshLambertMaterial({ map: (baseTextureSet.front || baseTextureSet.side) }),
+                    new THREE.MeshLambertMaterial({ map: baseTextureSet.side })
                 ];
-                material = materials;
             } else if (texture) {
-                material = new THREE.MeshLambertMaterial({ map: texture });
+                material = new THREE.MeshLambertMaterial({ map: Array.isArray(texture) ? texture[0].map : texture });
             } else {
                 material = new THREE.MeshLambertMaterial({ color: 0xff00ff });
             }
 
             const blockMesh = new THREE.Mesh(geometry, material);
-            // Use shared base so update() and creation match — moved more left and a bit more up
             blockMesh.scale.set(0.45, 0.45, 0.45);
             blockMesh.position.set(this.heldBase.x, this.heldBase.y, this.heldBase.z);
             blockMesh.rotation.set(-Math.PI / 12, Math.PI, Math.PI / 24);
-            
-            // Ensure matrices are initialized
+
             blockMesh.updateMatrix();
             blockMesh.updateMatrixWorld(true);
 
-            this.heldItemMesh = blockMesh;
+            newMesh = blockMesh;
+        }
+
+        // After all async operations, update the instance property and add to the scene
+        this.heldItemMesh = newMesh;
+        if (this.heldItemMesh) {
             this.arm.add(this.heldItemMesh);
         }
     }
@@ -230,7 +224,7 @@ export class PlayerArm {
     update(delta, playerIsMoving, playerIsSprinting, isAttacking = false, selectedItemType = null, textures = null) {
         if (!this.mesh) return;
 
-        // Update held item if changed - this ensures cleanup happens
+        // This is now an async, fire-and-forget call. The function handles adding/removing meshes safely.
         if (selectedItemType !== this.currentItemType && textures) {
             this.updateHeldItem(selectedItemType, textures);
         }
@@ -244,7 +238,7 @@ export class PlayerArm {
         );
 
         const bob = this.animationState.bobbing;
-        
+
         if (playerIsSprinting) {
             bob.targetAmplitude = 0.08;
         } else if (playerIsMoving) {
@@ -252,7 +246,7 @@ export class PlayerArm {
         } else {
             bob.targetAmplitude = 0;
         }
-        
+
         const LERP_FACTOR = 8 * delta;
         bob.amplitude = THREE.MathUtils.lerp(bob.amplitude, bob.targetAmplitude, LERP_FACTOR);
 
@@ -265,13 +259,13 @@ export class PlayerArm {
 
         if (bob.amplitude > 0.001) {
             bob.time += delta;
-            
+
             const bobY = Math.sin(bob.time * bob.frequency) * bob.amplitude;
             const bobX = Math.cos(bob.time * bob.frequency * 0.5) * bob.amplitude * 0.5;
-            
+
             this.mesh.position.y += bobY;
             this.mesh.position.x += bobX;
-            
+
             if (this.heldItemMesh) {
                 // Apply bob relative to shared base so held item doesn't teleport
                 this.heldItemMesh.position.y = this.heldBase.y + bobY;
@@ -282,16 +276,16 @@ export class PlayerArm {
         }
 
         const swing = this.animationState.swinging;
-        
+
         if (isAttacking) {
             if (swing.time < 0) {
                  swing.time = 0;
             }
         }
-        
+
         if (swing.time >= 0) {
             swing.time += delta;
-            
+
             const progress = Math.min(swing.time / swing.duration, 1.0);
             const easeOutProgress = Math.sin(progress * Math.PI);
 
@@ -303,7 +297,7 @@ export class PlayerArm {
             this.mesh.rotation.z = Math.sin(progress * Math.PI * 2) * TWIST * 0.5;
             this.mesh.rotation.y = Math.sin(progress * Math.PI) * TWIST * 0.4;
             this.mesh.position.z = - (easeOutProgress * FORWARD);
-            
+
             if (this.heldItemMesh) {
                 // keep z baseline consistent with new held item forward offset
                 this.heldItemMesh.position.z = -0.15 - (easeOutProgress * FORWARD);

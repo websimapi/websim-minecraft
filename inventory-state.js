@@ -70,7 +70,7 @@ function createSlabIcon(sourceImagePath) {
         canvas.width = 16;
         canvas.height = 16;
         const ctx = canvas.getContext('2d'); 
-        
+
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.onload = () => {
@@ -81,7 +81,7 @@ function createSlabIcon(sourceImagePath) {
             // Cover top half with black to create "cut in half" effect
             ctx.fillStyle = 'rgba(0, 0, 0, 0)';
             ctx.clearRect(0, 0, 16, 8);
-            
+
             const dataUrl = canvas.toDataURL('image/png');
             resolve(dataUrl);
         };
@@ -189,12 +189,12 @@ export class InventoryState {
     addBlock(blockType, durability = null) {
         // Don't collect leaves or flint and steel
         if (blockType === 6 || blockType === 8) return;
-        
+
         // Convert top slabs to bottom slabs for inventory (15->11, 16->12, 17->13)
         if (blockType >= 15 && blockType <= 17) {
             blockType = blockType - 4;
         }
-        
+
         // Convert sideways logs to regular logs for inventory
         if (blockType === 18 || blockType === 19) {
             blockType = 5;
@@ -213,7 +213,7 @@ export class InventoryState {
                     return true;
                 }
             }
-            
+
             for (let i = 0; i < this.inventorySlots.length; i++) {
                 if (this.inventorySlots[i].type === null || this.inventorySlots[i].count === 0) {
                     this.inventorySlots[i].type = blockType;
@@ -230,7 +230,7 @@ export class InventoryState {
                     return true;
                 }
             }
-            
+
             // Try to add to existing stacks in inventory
             for (let i = 0; i < this.inventorySlots.length; i++) {
                 if (this.inventorySlots[i].type === blockType && this.inventorySlots[i].count < 64 && this.inventorySlots[i].durability === null) {
@@ -248,7 +248,7 @@ export class InventoryState {
                     return true;
                 }
             }
-            
+
             // Try to add to empty slot in inventory
             for (let i = 0; i < this.inventorySlots.length; i++) {
                 if (this.inventorySlots[i].type === null || this.inventorySlots[i].count === 0) {

@@ -10,11 +10,11 @@ export class SlotInteractionHandler {
         this.hotbarUI = hotbarUI;
         this.inventoryUI = inventoryUI;
         this.furnace = furnace;
-        
+
         this.dragHandler = new DragHandler(inventoryState, () => this.update());
         this.clickHandler = new ClickHandler(inventoryState, () => this.update());
         this.transferHandler = new TransferHandler(inventoryState);
-        
+
         this.isMouseDown = false;
         this.mouseButton = -1;
     }
@@ -43,7 +43,7 @@ export class SlotInteractionHandler {
 
     handleGlobalMouseMove(e) {
         if (!this.isMouseDown) return;
-        
+
         if (!this.dragHandler.isDragging && this.state.heldItem) {
             this.dragHandler.startDrag(this.state.heldItem);
         }
@@ -53,7 +53,7 @@ export class SlotInteractionHandler {
         e.preventDefault();
         e.stopPropagation();
     }
-    
+
     handleSlotMouseUp(e, slotId, type, isCrafting, is3x3, isOutput) {
         if (this.dragHandler.isDragging) return;
         e.preventDefault();
@@ -72,7 +72,7 @@ export class SlotInteractionHandler {
 
     handleSlotHover(e, slotId, type, isCrafting, is3x3, isOutput) {
         if (!this.dragHandler.isDragging || !this.dragHandler.dragStartItem || isOutput) return;
-        
+
         const slotData = this.getSlotData(slotId, type, isCrafting, is3x3);
         if (!slotData) return;
 
@@ -82,7 +82,7 @@ export class SlotInteractionHandler {
         } else if (this.mouseButton === 0) {
             changed = this.dragHandler.handleLeftClickDrag(slotData, e.currentTarget);
         }
-        
+
         if (changed && isCrafting) {
             this.crafting.updateCraftingOutput(is3x3);
         }
@@ -92,28 +92,28 @@ export class SlotInteractionHandler {
     handleSlotClick(e, slotIndex, type, isCrafting = false, is3x3 = false) {
         const isRightClick = e.button === 2;
         const isShiftClick = e.shiftKey;
-        
+
         const slotData = this.getSlotData(slotIndex, type, isCrafting, is3x3);
         if (!slotData) return;
 
         const action = this.clickHandler.handleSlotClick(slotData, isRightClick, isShiftClick);
-        
+
         if (action === 'quick_transfer') {
             if (!isCrafting && !type.startsWith('furnace')) {
                 this.transferHandler.quickTransfer(slotData);
             }
         }
-        
+
         if (isCrafting) this.crafting.updateCraftingOutput(is3x3);
         if (type.startsWith('furnace')) this.furnace.render();
-        
+
         this.update();
     }
 
     handleFurnaceOutputClick(e) {
         const furnaceData = this.furnace.getActiveFurnaceData();
         if (!furnaceData) return;
-        
+
         if (this.transferHandler.handleOutputClick(furnaceData.outputSlot, e.shiftKey)) {
             this.update();
         }
@@ -136,7 +136,7 @@ export class SlotInteractionHandler {
             } else {
                 let maxCrafts = Infinity;
                 const craftingSlots = is3x3 ? this.crafting.craftingSlots : this.crafting.personalCraftingSlots;
-                
+
                 const ingredientCounts = {};
                 for(const item of recipe.consumes) {
                     ingredientCounts[item.slot] = (ingredientCounts[item.slot] || 0) + item.amount;
@@ -177,7 +177,7 @@ export class SlotInteractionHandler {
 
         this.update();
     }
-    
+
     getSlotData(slotId, type, isCrafting, is3x3) {
         if (isCrafting) {
             return is3x3 ? this.crafting.craftingSlots[slotId] : this.crafting.personalCraftingSlots[slotId];
@@ -205,7 +205,7 @@ export class SlotInteractionHandler {
         } else if (this.inventoryUI && this.inventoryUI.isFurnaceOpen) {
             this.furnace.render();
         }
-        
+
         this.hotbarUI.updateHotbar();
         this.renderer.updateCursorElement(
             document.querySelector('.inventory-cursor'),
